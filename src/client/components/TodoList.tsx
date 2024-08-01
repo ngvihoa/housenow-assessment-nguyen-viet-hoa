@@ -144,11 +144,32 @@ export const TodoList = ({
     },
   })
 
+  const customSortTodo = (
+    a: {
+      status: 'completed' | 'pending'
+      id: number
+      body: string
+    },
+    b: {
+      status: 'completed' | 'pending'
+      id: number
+      body: string
+    }
+  ) => {
+    if (a.status === b.status) {
+      return 0
+    }
+    if (a.status === 'pending') {
+      return -1
+    }
+    return 1
+  }
+
   return (
     <>
       <ul className="grid grid-cols-1 gap-y-3" ref={parent}>
         {todos.length > 0 && !isLoading ? (
-          todos.map((todo) => (
+          todos.sort(customSortTodo).map((todo) => (
             <li key={todo.id}>
               <div
                 className={clsx(
