@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { TRPCError } from '@trpc/server'
 
 import { procedure } from '@/server/trpc/procedures'
 import { router } from '@/server/trpc/router'
