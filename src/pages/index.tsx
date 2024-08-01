@@ -1,3 +1,5 @@
+import * as Tabs from '@radix-ui/react-tabs'
+
 import { CreateTodoForm } from '@/client/components/CreateTodoForm'
 import { TodoList } from '@/client/components/TodoList'
 
@@ -24,9 +26,32 @@ const Index = () => {
           Todo App
         </h1>
 
-        <div className="pt-10">
-          <TodoList />
-        </div>
+        <Tabs.Root defaultValue="all">
+          <Tabs.List
+            className="flex gap-2 pt-10 text-sm font-bold"
+            aria-label="Manage your account"
+          >
+            {['all', 'pending', 'completed'].map((item, index) => (
+              <Tabs.Trigger
+                key={'tab-filter-todo' + item + index}
+                className="rounded-full border border-gray-200 px-6 py-3 text-center capitalize data-[state=active]:bg-gray-700 data-[state=active]:text-white"
+                value={item}
+              >
+                {item}
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+
+          <Tabs.Content className="pt-10" value="all">
+            <TodoList statuses={['pending', 'completed']} />
+          </Tabs.Content>
+          <Tabs.Content className="pt-10" value="pending">
+            <TodoList statuses={['pending']} />
+          </Tabs.Content>
+          <Tabs.Content className="pt-10" value="completed">
+            <TodoList statuses={['completed']} />
+          </Tabs.Content>
+        </Tabs.Root>
 
         <div className="pt-10">
           <CreateTodoForm />

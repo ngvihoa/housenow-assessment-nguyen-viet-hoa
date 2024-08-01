@@ -1,6 +1,7 @@
-import type { SVGProps } from 'react'
-
+import { type SVGProps } from 'react'
 import * as Checkbox from '@radix-ui/react-checkbox'
+import clsx from 'clsx'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 
 import { api } from '@/utils/client/api'
 
@@ -63,32 +64,143 @@ import { api } from '@/utils/client/api'
  *  - https://auto-animate.formkit.com
  */
 
-export const TodoList = () => {
-  const { data: todos = [] } = api.todo.getAll.useQuery({
-    statuses: ['completed', 'pending'],
+export const TodoList = ({
+  statuses,
+}: {
+  statuses: ('completed' | 'pending')[]
+}) => {
+  const { data: todos = [], isLoading } = api.todo.getAll.useQuery({
+    statuses: statuses,
+  })
+
+  const [parent] = useAutoAnimate({
+    duration: 300,
+    easing: 'ease-in-out',
+  })
+
+  const apiContext = api.useContext()
+
+  const { mutate: updateStatus } = api.todoStatus.update.useMutation({
+    onMutate: async ({ todoId, status }) => {
+      await apiContext.todo.getAll.cancel()
+
+      const previousTodos = apiContext.todo.getAll.getData({
+        statuses: statuses,
+      })
+
+      apiContext.todo.getAll.setData(
+        {
+          statuses: statuses,
+        },
+        (prev) => {
+          if (!prev) {
+            return previousTodos
+          }
+          return prev.map((t) => (t.id === todoId ? { ...t, status } : t))
+        }
+      )
+
+      return { previousTodos }
+    },
+    onError: (err, newTodo, context) => {
+      apiContext.todo.getAll.setData(
+        {
+          statuses: statuses,
+        },
+        () => context?.previousTodos
+      )
+    },
+  })
+
+  const { mutate: deleteTodo } = api.todo.delete.useMutation({
+    onMutate: async (deleteTodo) => {
+      await apiContext.todo.getAll.cancel()
+
+      const previousTodos = apiContext.todo.getAll.getData({
+        statuses: statuses,
+      })
+
+      apiContext.todo.getAll.setData(
+        {
+          statuses: statuses,
+        },
+        (prev) => {
+          if (!prev) {
+            return previousTodos
+          }
+          return prev.filter((t) => t.id !== deleteTodo.id)
+        }
+      )
+
+      return { previousTodos }
+    },
+    onError: (err, newTodo, context) => {
+      apiContext.todo.getAll.setData(
+        {
+          statuses: statuses,
+        },
+        () => context?.previousTodos
+      )
+    },
   })
 
   return (
-    <ul className="grid grid-cols-1 gap-y-3">
-      {todos.map((todo) => (
-        <li key={todo.id}>
-          <div className="flex items-center rounded-12 border border-gray-200 px-4 py-3 shadow-sm">
-            <Checkbox.Root
-              id={String(todo.id)}
-              className="flex h-6 w-6 items-center justify-center rounded-6 border border-gray-300 focus:border-gray-700 focus:outline-none data-[state=checked]:border-gray-700 data-[state=checked]:bg-gray-700"
-            >
-              <Checkbox.Indicator>
-                <CheckIcon className="h-4 w-4 text-white" />
-              </Checkbox.Indicator>
-            </Checkbox.Root>
+    <>
+      <ul className="grid grid-cols-1 gap-y-3" ref={parent}>
+        {todos.length > 0 && !isLoading ? (
+          todos.map((todo) => (
+            <li key={todo.id}>
+              <div
+                className={clsx(
+                  'flex items-center rounded-12 border border-gray-200 px-4 py-3 shadow-sm',
+                  todo.status === 'completed' &&
+                    'bg-gray-50 text-gray-500 line-through'
+                )}
+              >
+                <Checkbox.Root
+                  onClick={() => {
+                    updateStatus({
+                      todoId: todo.id,
+                      status:
+                        todo.status === 'completed' ? 'pending' : 'completed',
+                    })
+                  }}
+                  id={String(todo.id)}
+                  checked={todo.status === 'completed'}
+                  className="flex h-6 w-6 items-center justify-center rounded-6 border border-gray-300 focus:border-gray-700 focus:outline-none data-[state=checked]:border-gray-700 data-[state=checked]:bg-gray-700"
+                >
+                  <Checkbox.Indicator>
+                    <CheckIcon className="h-4 w-4 text-white" />
+                  </Checkbox.Indicator>
+                </Checkbox.Root>
 
-            <label className="block pl-3 font-medium" htmlFor={String(todo.id)}>
-              {todo.body}
-            </label>
-          </div>
-        </li>
-      ))}
-    </ul>
+                <label
+                  className="block pl-3 font-medium"
+                  htmlFor={String(todo.id)}
+                >
+                  {todo.body}
+                </label>
+
+                <button
+                  onClick={() => {
+                    deleteTodo({
+                      id: todo.id,
+                    })
+                  }}
+                  className="ml-auto h-8 w-8 rounded-[10px] p-1"
+                >
+                  <XMarkIcon />
+                </button>
+              </div>
+            </li>
+          ))
+        ) : isLoading ? (
+          <div className="text-center font-semibold">Loading...</div>
+        ) : (
+          <div className="text-center font-semibold">Sorry, no todo found.</div>
+        )}
+      </ul>
+    </>
   )
 }
 
